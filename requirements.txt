@@ -1,0 +1,11 @@
+chromadb
+fastapi 
+llama-index
+llama-index-vector-stores-chroma 
+llama-index-embeddings-openai
+pydantic
+python-dotenv
+uvicorn 
+streamlit
+python-multipart
+loguru

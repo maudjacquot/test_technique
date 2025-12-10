@@ -1,97 +1,138 @@
-# Test technique - Tech / Interface chat avec RAG
+# **README**
 
-## **1. Contexte**
+# Test Technique - RAG Chatbot PoC
 
-Emilia Parenti dirige un **cabinet d’avocats en droit des affaires**, situé à Paris.
+## Contexte
+Ce projet est une preuve de concept pour un **chatbot interne sécurisé** destiné à un cabinet d’avocats.  
+L’objectif est de permettre à l’équipe de rechercher rapidement des informations dans des documents juridiques, via un **RAG (Retrieval-Augmented Generation)**.
 
-Son équipe traite quotidiennement des documents confidentiels : contrats, litiges, notes internes, jurisprudences, etc. Emilia souhaite mettre en place un **chatbot interne sécurisé** pour faciliter l’accès à l'information juridique tout en garantissant la confidentialité.
-
-Pour cette **preuve de concept (PoC)**, les documents utilisés sont **anonymisés** avec de faux noms, et le modèle de langage devra être **appelé via une API** sécurisée.
-
----
-
-## **2. Objectif fonctionnel**
-
-Le but du test est de concevoir une **application Streamlit** intégrant un système de **RAG (Retrieval-Augmented Generation)** basé sur des documents juridiques uploadés manuellement. L’objectif est de tester :
-
-- ta capacité à **intégrer un LLM à une interface personnalisée**
-- ta rigueur dans le **pré-traitement et vectorisation des documents**
-- la qualité de ton **architecture logicielle**
-
-### **2.1 Page 1 – Interface Chatbot**
-
-Cette page permet à un collaborateur de :
-
-- Poser une question à l’IA via une interface de chat
-- Recevoir une réponse basée exclusivement sur les documents internes
-- Créer une nouvelle conversation (💬 bonus : gestion d’un historique de conversations)
-
-Toutes les réponses doivent être générées à partir des **documents vectorisés** (pas de génération hors corpus).
-
-### **2.2 Page 2 – Gestion des documents**
-
-Cette page permet à l’utilisateur de :
-
-- **Uploader** des documents (`.txt`, `.csv`, `.html`)
-- **Supprimer** des documents existants
-- Automatiquement :
-    - **Nettoyer les fichiers**
-    - **Vectoriser** le contenu pour la base RAG
-
-L’ensemble des documents doit être indexé pour que le modèle puisse s’y référer via un moteur vectoriel (type FAISS, Chroma, etc.).
+Le projet combine :
+- **FastAPI** pour l’API backend (gestion des documents et orchestration du LLM)  
+- **Streamlit** pour l’interface utilisateur  
+- **Chroma + LlamaIndex** pour la vectorisation et la recherche de documents  
+- **OpenAI API** (ou modèle compatible) pour les réponses du chatbot
 
 ---
 
-## **3. Livrables & Environnement de Test**
+## Structure du projet
 
-### **3.1 Setup minimal**
-
-Avant de commencer :
-
-- Créer un environnement Python dédié
-- Installer les dépendances nécessaires (ex : `streamlit`, `langchain`, `openai`, `chromadb`, etc.)
-- Utiliser un modèle LLM disponible via API (`OpenAI (clef fournit)`, `Mistral`, `Claude`, etc.)
-- Créer un dossier local ou une base vectorielle pour stocker les embeddings
-
-### **3.2 Livrables attendus**
-
-| Élément | Détail attendu |
-| --- | --- |
-| 💻 Application | Interface Streamlit fonctionnelle avec deux pages |
-| 📦 Gestion de fichiers | Upload / delete + vectorisation automatisée |
-| 🔗 Intégration LLM | API propre, sécurisé, réponse contrôlée via RAG |
-| 🧹 Nettoyage des données | Pipeline de preprocessing simple et efficace |
-| 📜 Historique (bonus) | Gestion conversationnelle avec suivi des échanges |
-| 📁 README | Instructions claires pour exécuter le projet en local |
-| 🔗 GitHub | Repo : https://github.com/AI-Sisters/test_technique |
+.
+├── .env
+├── .gitignore
+├── App.py                  # Entrée Streamlit
+├── main.py                 # Entrée FastAPI
+├── data/                   # Documents source et index Chroma
+├── files/                  # Config et prompts
+├── pages/                  # Pages Streamlit (nécessaire pour st.switch_page)
+├── requirements.txt
+├── README.md
+└── src/
+    ├── backend/
+    │   ├── api/            # Endpoints FastAPI (admin)
+    │   └── services/       # Logic métier : LLM, ingestion, orchestrator, retriever
+    └── frontend/           # Interface Streamlit si besoin d’organisation interne
 
 ---
 
-## **4. Évaluation**
+## Installation
 
-| Critère | Éléments attendus | Points |
-| --- | --- | --- |
-| ⚙️ Fonctionnalité | Upload, RAG, interface chat, vectorisation | 150pt |
-| 🧱 Architecture | Structure du projet claire, code modulaire | 100pt |
-| 🤖 Intégration IA | API LLM bien utilisée, réponses cohérentes | 75pt |
-| 🧼 Données | Pipeline de nettoyage fiable et simple | 50pt |
-| 🧪 Robustesse | Gestion des erreurs, logs, stabilité | 50pt |
-| 🎯 UX | Interface fluide, logique d’usage claire | 50pt |
-| 🎁 Bonus | Historique, logs, sécurité, documentation | +10 à +50pt |
-| **Total** |  |  |
+1. Cloner le repo
 
-> 🧠 Tu peux utiliser tous les outils d’IA à disposition (ChatGPT, Copilot, etc.), mais la rigueur et la qualité de ton code primeront.
-> 
+```bash
+git clone https://github.com/AI-Sisters/test_technique.git
+cd test_technique
+```
+
+2. Créer un environnement Python
+
+```bash
+python -m venv .venv
+source .venv/bin/activate        # macOS/Linux
+.venv\Scripts\activate           # Windows
+```
+
+3. Installer les dépendances
+
+```bash
+pip install -r requirements.txt
+```
+
+4. Configurer l’API key
+- Créer `.env` et ajouter votre clé OpenAI :
+
+```ini
+API_KEY=...
+```
 
 ---
 
-## **5. Conclusion**
+## Lancer l’application
 
-Ce test a pour but de valider :
+### FastAPI (API backend)
 
-- Ta capacité à **prototyper un outil complet en autonomie**
-- Ton aisance avec les concepts de **RAG, vectorisation, et intégration LLM**
-- Ta **rigueur technique** (structure, propreté du code, gestion des erreurs)
-- Ton **agilité** : apprendre vite, aller à l’essentiel, mais proprement
+```bash
+uvicorn main:app --reload
+```
 
-Tu es libre dans tes choix techniques tant que tu **justifies ton raisonnement**, que ton code est **complet et maintenable**, et que le prototype **fonctionne avec fluidité**.
+- Health check : `http://127.0.0.1:8000/health`  
+- Endpoint chat (OpenAI-compatible) : `POST http://127.0.0.1:8000/v1/chat/completions`  
+- Admin endpoints disponibles sous `/admin`
+
+### Streamlit (interface utilisateur)
+
+```bash
+streamlit run App.py
+```
+
+- Menu à gauche pour naviguer entre **Assistant RAG** et **Admin**  
+- Les pages sont dans `pages/` à la racine pour `st.switch_page()`  
+
+---
+
+## Utilisation
+
+### Streamlit
+
+1. **Assistant RAG**  
+   - Poser une question et obtenir une réponse basée uniquement sur les documents vectorisés.  
+   - Historique des conversations (bonus).
+
+2. **Admin**  
+   - Upload, suppression et ingestion des documents.  
+   - Reset de la base vectorielle Chroma si besoin.
+
+### API
+
+- Upload + ingestion d’un fichier : `/admin/raw-files/upload-and-ingest`  
+- Liste des fichiers : `/admin/raw-files`  
+- Suppression d’un fichier : `/admin/raw-files/{rel_path}`  
+- Reset vecteurs : `/admin/vector/reset`  
+
+---
+
+## Configuration
+
+- `files/config.json` contient les paramètres principaux :
+  - `data_path` : dossier contenant les documents
+  - `chroma_path` : dossier pour la base vectorielle
+  - `collection_name` : nom de la collection Chroma
+  - `chunk_size`, `chunk_overlap` : paramètres de découpe des documents
+  - `top_k` : nombre de chunks retournés par la recherche
+  - `prompt_system` : fichier de system prompt
+
+---
+
+## Notes
+
+- Tous les documents sont **anonymisés** pour le PoC.  
+- LLM utilisé via API : OpenAI ou compatible.    
+- Pour tests et maintenance, la logique métier est centralisée dans `src/backend/services`.  
+
+---
+
+## TODO
+
+- Ajouter logs 
+- History à faire 
+- API sécurisé
+- README à finir 
