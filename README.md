@@ -72,6 +72,8 @@ API_KEY=...
 
 ```bash
 uvicorn main:app --reload
+#ou 
+python -m uvicorn main:app --reload
 ```
 
 - Health check : `http://127.0.0.1:8000/health`  
