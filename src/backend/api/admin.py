@@ -138,83 +138,76 @@ async def admin_upload_raw_file(file: UploadFile = File(...)):
     logger.success(f"[ADMIN] Upload sauvegardé : {target}")
     return UploadResponse(saved_as=str(target.relative_to(DATA_DIR)).replace("\\", "/"), size_bytes=size)
 
-
 @router.delete("/raw-files/{rel_path:path}")
 def admin_delete_raw_and_chroma_file(rel_path: str):
-
     orchestrator = router.orchestrator 
-    
     logger.warning(f"[ADMIN] Suppression du fichier : {rel_path}")
-
+    
     # --- 1) Suppression dans DATA_DIR ---
     target = safe_resolve_under(DATA_DIR, rel_path)
     filename = target.name
-
     if not target.exists() or not target.is_file():
         raise HTTPException(status_code=404, detail="File not found.")
-
-    target.unlink()
-    logger.info(f"[ADMIN] Fichier supprimé : {rel_path}")
-
-    # --- 2) Suppression dans Chroma ---
+    
+    # --- 2) Suppression via llama-index (AVANT de supprimer le fichier physique) ---
     try:
+        # Récupère l'index actuel
+        index = orchestrator.retriever._get_index()
+        
+        # Trouve les ref_doc_ids liés au fichier
         client = PersistentClient(path=str(CHROMA_PATH))
         collection = client.get_collection(CFG["collection_name"])
-
-        # Récupération de TOUTES les métadatas (comme ton script)
         data = collection.get(include=["metadatas"])
-
+        
+        ref_doc_ids = set()
         ids_to_delete = []
+        
         for id_, meta in zip(data.get("ids", []), data.get("metadatas", [])):
             if meta and meta.get("file_name") == filename:
                 ids_to_delete.append(id_)
-
-        if ids_to_delete:
-            logger.warning(
-                f"[ADMIN] Suppression dans Chroma : {len(ids_to_delete)} chunks liés à {filename}"
-            )
+                # Récupère aussi le ref_doc_id si présent
+                if "ref_doc_id" in meta:
+                    ref_doc_ids.add(meta["ref_doc_id"])
+        
+        # Suppression via llama-index (nettoie docstore + vector store)
+        if ref_doc_ids:
+            logger.warning(f"[ADMIN] Suppression de {len(ref_doc_ids)} documents via llama-index")
+            for ref_doc_id in ref_doc_ids:
+                index.delete_ref_doc(ref_doc_id, delete_from_docstore=True)
+            logger.success(f"[ADMIN] Documents supprimés du docstore et vector store")
+        
+        # Fallback : si pas de ref_doc_id, supprime directement dans Chroma
+        elif ids_to_delete:
+            logger.warning(f"[ADMIN] Fallback : suppression directe dans Chroma de {len(ids_to_delete)} chunks")
             collection.delete(ids=ids_to_delete)
-            logger.success(
-                f"[ADMIN] Embeddings supprimés pour {filename} — chunks={len(ids_to_delete)}"
-            )
         else:
-            logger.info(
-                f"[ADMIN] Aucun embedding trouvé dans Chroma pour {filename}"
-            )
-
+            logger.info(f"[ADMIN] Aucun embedding trouvé pour {filename}")
+            
     except Exception as e:
-        logger.error(f"[ADMIN] Erreur lors de la suppression dans Chroma : {e}")
+        logger.error(f"[ADMIN] Erreur lors de la suppression dans l'index : {e}")
         raise HTTPException(
             status_code=500,
-            detail=f"File deleted from data/, but failed removing embeddings from Chroma: {e}",
+            detail=f"Failed to remove document from index: {e}"
         )
-    # Dans ton routeur admin_delete_raw_and_chroma_file
-    # Après la suppression dans Chroma
+    
+    # --- 3) Suppression du fichier physique (APRÈS la suppression dans l'index) ---
+    target.unlink()
+    logger.info(f"[ADMIN] Fichier supprimé : {rel_path}")
+    
+    # --- 4) Rafraîchir le retriever ---
     try:
-
-        # Suppression terminée → on reconstruit le retriever
-        # Assure-toi de passer la config et l'API key existantes
         cfg = orchestrator.retriever.cfg
         api_key = orchestrator.retriever.api_key
-
-        # Recrée un retriever propre
         orchestrator.retriever = orchestrator.retriever.__class__(config=cfg, api_key=api_key)
-        _ = orchestrator.retriever._get_index(rebuild=True)
-        logger.info("[ADMIN] Retriever rafraîchi après suppression du fichier")
-  # ou build_retriever() si tu as une fonction
-        logger.info("[ADMIN] Retriever rafraîchi après suppression du fichier")
+        logger.info("[ADMIN] Retriever rafraîchi après suppression")
     except Exception as e:
         logger.error(f"[ADMIN] Impossible de rafraîchir le retriever : {e}")
-
-
-    # --- 3) Retour ---
+    
     return {
         "deleted_file": rel_path,
-        "deleted_embeddings": len(ids_to_delete),
+        "deleted_ref_docs": len(ref_doc_ids) if ref_doc_ids else len(ids_to_delete),
         "collection_name": CFG["collection_name"],
-        "chroma_path": str(CHROMA_PATH),
     }
-
 
 
 @router.post("/ingest/{rel_path:path}")

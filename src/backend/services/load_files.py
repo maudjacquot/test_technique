@@ -113,7 +113,7 @@ def ingest_file(file_path: Path, cfg: Dict[str, Any], api_key: str) -> None:
     logger.info(f"[INGEST] Connexion à la DB Chroma : {chroma_path}")
     client = chromadb.PersistentClient(path=str(chroma_path))
     collection = client.get_or_create_collection(cfg["collection_name"])
-    vector_store = ChromaVectorStore(chroma_collection=collection)
+    vector_store = ChromaVectorStore(chroma_collection=collection, store_text=True)
     storage_context = StorageContext.from_defaults(vector_store=vector_store)
 
     logger.debug("[INGEST] Indexation des documents dans Chroma…")

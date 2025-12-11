@@ -93,7 +93,7 @@ class Retriever:
 
         client = chromadb.PersistentClient(path=self.cfg["chroma_path"])
         collection = client.get_or_create_collection(self.cfg["collection_name"])
-        vector_store = ChromaVectorStore(chroma_collection=collection)
+        vector_store = ChromaVectorStore(chroma_collection=collection, store_text=True)
         storage_context = StorageContext.from_defaults(vector_store=vector_store)
 
         self._index = VectorStoreIndex.from_vector_store(

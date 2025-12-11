@@ -134,7 +134,6 @@ streamlit run App.py
 
 ## TODO
 
-- Ajouter logs 
 - History à faire 
 - API sécurisé
 - README à finir 
