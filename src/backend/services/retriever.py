@@ -84,8 +84,11 @@ class Retriever:
 
         self._index: Optional[VectorStoreIndex] = None
 
-    def _get_index(self) -> VectorStoreIndex:
-        if self._index is not None:
+    def _get_index(self, rebuild: bool = False) -> VectorStoreIndex:
+        """
+        Si rebuild=True, recrée l'index même si self._index existe.
+        """
+        if self._index is not None and not rebuild:
             return self._index
 
         client = chromadb.PersistentClient(path=self.cfg["chroma_path"])
@@ -98,6 +101,7 @@ class Retriever:
             storage_context=storage_context,
         )
         return self._index
+
 
     @staticmethod
     def _safe_float(x: Any) -> Optional[float]:

@@ -49,6 +49,7 @@ orchestrator = Orchestrator(
     top_k=int(CONFIG.get("top_k", 5)),
 )
 
+admin_router.orchestrator = orchestrator
 
 @app.get("/health")
 def health():

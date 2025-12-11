@@ -149,7 +149,15 @@ class Orchestrator:
         payload.model = orch_in.model
 
         chunks: List[RetrievedChunk] = self.retriever.retrieve(payload)
+        chunks = [c for c in chunks if getattr(c, "text", None)]  
         chunks = chunks[: self.top_k]
+
+        if not chunks:
+            return OrchestratorOutput(
+                answer="Aucun document trouvé pour cette requête.",
+                usage={"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0},
+                sources=[],
+            )
 
         context_block, sources = self._format_context(chunks)
         messages = self.build_messages(orch_in, context_block)

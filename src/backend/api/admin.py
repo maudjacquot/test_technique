@@ -6,12 +6,12 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 import chromadb
 
+from chromadb import PersistentClient
 from fastapi import APIRouter, HTTPException, UploadFile, File, Query
 from pydantic import BaseModel
 from src.backend.services.logger import logger
 
 ALLOWED_EXT = {".txt", ".html", ".csv"}  
-
 
 def load_config(path: str = "files/config.json") -> Dict[str, Any]:
     path = os.getenv("APP_CONFIG", path)
@@ -28,6 +28,17 @@ def get_data_dir(cfg: Dict[str, Any]) -> Path:
         p.mkdir(parents=True, exist_ok=True)
     if not p.is_dir():
         raise RuntimeError(f"data_path is not a directory: {p}")
+    return p
+
+def get_chroma_path(cfg: Dict[str, Any]) -> Path:
+    chroma_path = cfg.get("chroma_path")
+    if not chroma_path:
+        raise RuntimeError("Missing 'chroma_path' in config.")
+    p = Path(chroma_path).expanduser().resolve()
+    if not p.exists():
+        p.mkdir(parents=True, exist_ok=True)
+    if not p.is_dir():
+        raise RuntimeError(f"chroma_path is not a directory: {p}")
     return p
 
 
@@ -69,6 +80,9 @@ def list_files(base: Path, recursive: bool = False) -> List[Dict[str, Any]]:
 router = APIRouter(prefix="/admin", tags=["admin"])
 CFG = load_config()
 DATA_DIR = get_data_dir(CFG)
+CHROMA_PATH = Path(CFG.get("chroma_path", "data/chroma")).expanduser().resolve()
+
+
 
 
 class UploadResponse(BaseModel):
@@ -126,14 +140,81 @@ async def admin_upload_raw_file(file: UploadFile = File(...)):
 
 
 @router.delete("/raw-files/{rel_path:path}")
-def admin_delete_raw_file(rel_path: str):
+def admin_delete_raw_and_chroma_file(rel_path: str):
+
+    orchestrator = router.orchestrator 
+    
     logger.warning(f"[ADMIN] Suppression du fichier : {rel_path}")
+
+    # --- 1) Suppression dans DATA_DIR ---
     target = safe_resolve_under(DATA_DIR, rel_path)
+    filename = target.name
+
     if not target.exists() or not target.is_file():
         raise HTTPException(status_code=404, detail="File not found.")
+
     target.unlink()
     logger.info(f"[ADMIN] Fichier supprimé : {rel_path}")
-    return {"deleted": rel_path}
+
+    # --- 2) Suppression dans Chroma ---
+    try:
+        client = PersistentClient(path=str(CHROMA_PATH))
+        collection = client.get_collection(CFG["collection_name"])
+
+        # Récupération de TOUTES les métadatas (comme ton script)
+        data = collection.get(include=["metadatas"])
+
+        ids_to_delete = []
+        for id_, meta in zip(data.get("ids", []), data.get("metadatas", [])):
+            if meta and meta.get("file_name") == filename:
+                ids_to_delete.append(id_)
+
+        if ids_to_delete:
+            logger.warning(
+                f"[ADMIN] Suppression dans Chroma : {len(ids_to_delete)} chunks liés à {filename}"
+            )
+            collection.delete(ids=ids_to_delete)
+            logger.success(
+                f"[ADMIN] Embeddings supprimés pour {filename} — chunks={len(ids_to_delete)}"
+            )
+        else:
+            logger.info(
+                f"[ADMIN] Aucun embedding trouvé dans Chroma pour {filename}"
+            )
+
+    except Exception as e:
+        logger.error(f"[ADMIN] Erreur lors de la suppression dans Chroma : {e}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"File deleted from data/, but failed removing embeddings from Chroma: {e}",
+        )
+    # Dans ton routeur admin_delete_raw_and_chroma_file
+    # Après la suppression dans Chroma
+    try:
+
+        # Suppression terminée → on reconstruit le retriever
+        # Assure-toi de passer la config et l'API key existantes
+        cfg = orchestrator.retriever.cfg
+        api_key = orchestrator.retriever.api_key
+
+        # Recrée un retriever propre
+        orchestrator.retriever = orchestrator.retriever.__class__(config=cfg, api_key=api_key)
+        _ = orchestrator.retriever._get_index(rebuild=True)
+        logger.info("[ADMIN] Retriever rafraîchi après suppression du fichier")
+  # ou build_retriever() si tu as une fonction
+        logger.info("[ADMIN] Retriever rafraîchi après suppression du fichier")
+    except Exception as e:
+        logger.error(f"[ADMIN] Impossible de rafraîchir le retriever : {e}")
+
+
+    # --- 3) Retour ---
+    return {
+        "deleted_file": rel_path,
+        "deleted_embeddings": len(ids_to_delete),
+        "collection_name": CFG["collection_name"],
+        "chroma_path": str(CHROMA_PATH),
+    }
+
 
 
 @router.post("/ingest/{rel_path:path}")
@@ -268,4 +349,32 @@ def admin_delete_vectors_for_raw_file(rel_path: str):
         "remaining_for_file": after_n,
         "collection_count": col.count(),
         "collection_name": CFG["collection_name"],
+    }
+
+@router.delete("/vector/wipe")
+def admin_wipe_vector_store():
+    """
+    DANGER: Deletes the entire Chroma collection (all vectors) and recreates it empty.
+    """
+    client = chromadb.PersistentClient(path=str(CFG["chroma_path"]))
+    name = CFG["collection_name"]
+
+    # Delete collection (nukes all vectors)
+    try:
+        client.delete_collection(name)
+    except Exception:
+        # If it doesn't exist, that's fine
+        pass
+
+    # Recreate empty collection
+    client.get_or_create_collection(name)
+
+    # Verify
+    col = client.get_collection(name)
+    return {
+        "status": "ok",
+        "action": "wipe",
+        "chroma_path": CFG["chroma_path"],
+        "collection_name": name,
+        "count": col.count(),
     }
