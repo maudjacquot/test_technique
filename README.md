@@ -63,9 +63,8 @@ Le projet combine :
 ## Installation
 
 ### 1. Cloner le repo
-
 ```bash
-git clone https://github.com/AI-Sisters/test_technique.git
+git clone https://github.com/maudjacquot/test_technique
 cd test_technique
 ```
 
@@ -73,6 +72,9 @@ cd test_technique
 
 ```bash
 python -m venv .venv
+# ou 
+python3 -m venv .venv
+
 source .venv/bin/activate        # macOS/Linux
 .venv\Scripts\activate           # Windows
 ```
@@ -91,7 +93,7 @@ Créer un fichier `.env` à la racine du projet avec :
 
 ```ini
 # Clé OpenAI pour le LLM
-API_KEY="sk-proj-votre_cle_openai"
+OPEN_API_KEY="sk-proj-votre_cle_openai"
 
 # Clé d'authentification pour le frontend Streamlit
 FRONTEND_API_KEY="votre_cle_secrete_super_longue_123456"
@@ -288,7 +290,6 @@ Le projet suit une architecture en couches :
 - **Frontend** : Streamlit 1.30+
 - **RAG** : LlamaIndex, Chroma DB
 - **LLM** : OpenAI API (gpt-4.1-mini)
-- **Embeddings** : OpenAI text-embedding-3-small
 - **Logging** : Loguru
 
 ### Données de test

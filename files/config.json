@@ -1,6 +1,5 @@
 {
     "default_model": "gpt-4.1-mini", 
-    "embedding_model": "text-embedding-3-small",
   
     "data_path": "data",
     "chroma_path": "data/chroma",

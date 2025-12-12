@@ -82,9 +82,7 @@ def ingest_file(file_path: Path, cfg: Dict[str, Any], api_key: str) -> None:
         chunk_overlap=int(cfg["chunk_overlap"]),
     )
 
-    embedding_model = cfg.get("embedding_model", "text-embedding-3-small")
-
-    Settings.embed_model = OpenAIEmbedding(api_key=api_key, model=embedding_model)
+    Settings.embed_model = OpenAIEmbedding(api_key=api_key)
 
     docs = load_single_file_as_documents(file_path)
     logger.debug(f"[INGEST] Nombre de documents bruts : {len(docs)}")

@@ -105,8 +105,6 @@ def admin_list_raw_files(
             ext_norm = "." + ext_norm
         files = [f for f in files if f["ext"] == ext_norm]
     return {"data_path": str(DATA_DIR), "files": files}
-
-
 @router.delete("/raw-files/{rel_path:path}")
 def admin_delete_raw_and_chroma_file(rel_path: str, api_key: str = Depends(verify_api_key)):
     orchestrator = router.orchestrator 
