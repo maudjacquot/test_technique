@@ -1,23 +1,23 @@
 import streamlit as st
-import requests
-
-API_URL = "http://localhost:8000/v1/chat/completions"
+from src.frontend.api_client import get_api_client
 
 st.title("🧠 RAG Assistant – Streamlit")
+
+# Récupérer le client API
+api_client = get_api_client()
 
 question = st.text_input("Pose ta question :")
 
 if st.button("Envoyer"):
     if question.strip():
         with st.spinner("Réflexion en cours..."):
-            payload = {
-                "user": "streamlit-user",
-                "input": question
-            }
-            response = requests.post(API_URL, json=payload)
+            # Appel API via le client sécurisé
+            data = api_client.chat_completion(
+                user="streamlit-user",
+                question=question
+            )
 
-            if response.status_code == 200:
-                data = response.json()
+            if data:
                 answer = data["choices"][0]["message"]["content"]
 
                 st.write("### Réponse :")
@@ -30,6 +30,5 @@ if st.button("Envoyer"):
                         f"réponse: {usage['completion_tokens']} | "
                         f"total: {usage['total_tokens']}"
                     )
-            else:
-                st.error(f"Erreur API : {response.status_code}")
-                st.error(response.text)
+    else:
+        st.warning("⚠️ Pose une question d'abord !")

@@ -1,6 +1,12 @@
 import streamlit as st
+from src.frontend.api_client import get_api_client
 
 st.set_page_config(page_title="RAG App", page_icon="🤖", layout="centered")
+
+try:
+    api_client = get_api_client()
+except:
+    st.stop()
 
 st.title("🤖 Bienvenue dans ton application RAG")
 st.markdown("## 🚀 Navigation rapide")

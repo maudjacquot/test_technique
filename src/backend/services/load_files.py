@@ -81,7 +81,10 @@ def ingest_file(file_path: Path, cfg: Dict[str, Any], api_key: str) -> None:
         chunk_size=int(cfg["chunk_size"]),
         chunk_overlap=int(cfg["chunk_overlap"]),
     )
-    Settings.embed_model = OpenAIEmbedding(api_key=api_key)
+
+    embedding_model = cfg.get("embedding_model", "text-embedding-3-small")
+
+    Settings.embed_model = OpenAIEmbedding(api_key=api_key, model=embedding_model)
 
     docs = load_single_file_as_documents(file_path)
     logger.debug(f"[INGEST] Nombre de documents bruts : {len(docs)}")
@@ -135,9 +138,9 @@ def ingest_file(file_path: Path, cfg: Dict[str, Any], api_key: str) -> None:
 
 def repl() -> int:
     load_dotenv()
-    api_key = os.getenv("API_KEY")
+    api_key = os.getenv("OPEN_API_KEY")
     if not api_key:
-        print("ERROR: Missing API_KEY (set it in .env).")
+        print("ERROR: Missing OPEN_API_KEY (set it in .env).")
         return 1
 
     cfg = load_config()

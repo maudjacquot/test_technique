@@ -75,9 +75,9 @@ class Retriever:
 
     def __init__(self, config: Optional[Dict[str, Any]] = None, api_key: Optional[str] = None):
         self.cfg = config or load_config()
-        self.api_key = api_key or os.getenv("API_KEY")
+        self.api_key = api_key or os.getenv("OPEN_API_KEY")
         if not self.api_key:
-            raise RuntimeError("Missing API_KEY (set it in .env or env vars).")
+            raise RuntimeError("Missing OPEN_API_KEY (set it in .env or env vars).")
 
         # Must be compatible with embeddings used during ingestion
         Settings.embed_model = OpenAIEmbedding(api_key=self.api_key)

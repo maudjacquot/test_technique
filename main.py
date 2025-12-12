@@ -4,8 +4,10 @@ import time
 from typing import Any, Dict, Optional
 
 from dotenv import load_dotenv
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Depends
 from pydantic import BaseModel, Field
+
+load_dotenv()
 
 from src.backend.services.retriever import Retriever
 from src.backend.services.orchestrator import Orchestrator, OrchestratorInput
@@ -13,6 +15,7 @@ from src.backend.services.llm_client import OpenAILLMClient
 
 from src.backend.api.admin import router as admin_router
 from src.backend.services.logger import logger
+from src.backend.api.security import verify_api_key
 
 def load_config(path: str = "files/config.json") -> Dict[str, Any]:
     path = os.getenv("APP_CONFIG", path)
@@ -30,9 +33,9 @@ load_dotenv()
 CONFIG = load_config()
 DEFAULT_MODEL = CONFIG["default_model"]
 
-API_KEY = os.getenv("API_KEY")
-if not API_KEY:
-    raise RuntimeError("Missing API_KEY. Put it in your .env file or environment variables.")
+OPEN_API_KEY = os.getenv("OPEN_API_KEY")
+if not OPEN_API_KEY:
+    raise RuntimeError("Missing OPEN_API_KEY. Put it in your .env file or environment variables.")
 
 app = FastAPI(title="RAG POC API", version="0.7.0")
 logger.info("Starting RAG POC API...")
@@ -40,8 +43,8 @@ logger.info("Starting RAG POC API...")
 app.include_router(admin_router)
 
 # Core components
-retriever = Retriever(config=CONFIG, api_key=API_KEY)
-llm_client = OpenAILLMClient(api_key=API_KEY)
+retriever = Retriever(config=CONFIG, api_key=OPEN_API_KEY)
+llm_client = OpenAILLMClient(api_key=OPEN_API_KEY)
 orchestrator = Orchestrator(
     retriever=retriever,
     llm_client=llm_client,
@@ -94,7 +97,7 @@ class ChatCompletionsResponse(BaseModel):
 
 
 @app.post("/v1/chat/completions", response_model=ChatCompletionsResponse)
-def chat_completions(req: EntryRequest):
+def chat_completions(req: EntryRequest, api_key: str = Depends(verify_api_key)):
     if not req.user.strip():
         raise HTTPException(status_code=400, detail="Field 'user' must not be empty.")
     if not req.input.strip():
