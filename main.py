@@ -25,7 +25,7 @@ def load_config(path: str = "files/config.json") -> Dict[str, Any]:
     cfg.setdefault("default_model", "gpt-4.1-mini")
     cfg.setdefault("top_k", 5)
     # prompt_system is just a filename; orchestrator will prefix it with files/prompts/rag/
-    cfg.setdefault("prompt_system", "default_sytem_prompt.txt")
+    cfg.setdefault("prompt_system", "default_system_prompt.txt")
     return cfg
 
 

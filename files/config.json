@@ -12,6 +12,6 @@
     
     "reingest_on_start": false,
   
-    "prompt_system": "files/prompts/default_sytem_prompt.txt"
+    "prompt_system": "files/prompts/default_system_prompt.txt"
   }
   

@@ -81,10 +81,21 @@ class OrchestratorOutput:
 
 class Orchestrator:
     """
-    Orchestrates:
-    - retrieval (vector store)
-    - prompt assembly (system prompt + context + history)
-    - LLM call (returns usage)
+    Orchestrateur RAG qui coordonne la récupération de documents et la génération de réponses.
+    
+    Responsabilités:
+    - Appeler le retriever pour obtenir les chunks pertinents
+    - Formater le contexte pour le LLM
+    - Construire les messages avec le system prompt
+    - Appeler le LLM et retourner la réponse avec les métadonnées
+    
+    Args:
+        retriever: Instance du Retriever pour la recherche vectorielle
+        llm_client: Client LLM (OpenAI) pour la génération de réponses
+        config: Configuration optionnelle (charge config.json par défaut)
+        top_k: Nombre de chunks à récupérer (override config)
+        system_prompt: Prompt système personnalisé (override fichier)
+        temperature: Température pour le LLM (0.1 par défaut)
     """
 
     def __init__(
@@ -94,7 +105,7 @@ class Orchestrator:
         config: Optional[Dict[str, Any]] = None,
         top_k: Optional[int] = None,
         system_prompt: Optional[str] = None,
-        temperature: float = 0.2,
+        temperature: float = 0.1,
     ):
         self.cfg = config or load_config()
         self.retriever = retriever
@@ -143,6 +154,23 @@ class Orchestrator:
         return messages
 
     def run(self, orch_in: OrchestratorInput) -> OrchestratorOutput:
+        """
+        Exécute le pipeline RAG complet.
+        
+        Args:
+            orch_in: Input contenant la question utilisateur et les métadonnées
+            
+        Returns:
+            OrchestratorOutput avec la réponse, usage tokens et sources
+            
+        Example:
+            >>> output = orchestrator.run(OrchestratorInput(
+            ...     user="john.doe",
+            ...     input="Quel est le délai de prescription?",
+            ...     model="gpt-4.1-mini"
+            ... ))
+            >>> print(output.answer)
+        """
         payload = type("Payload", (), {})()
         payload.user = orch_in.user
         payload.input = orch_in.input
@@ -211,7 +239,7 @@ if __name__ == "__main__":
             return fake_chunks
 
     class DummyLLM:
-        def chat(self, model, messages, temperature=0.2):
+        def chat(self, model, messages, temperature=0.1):
             return "dummy", {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0}
 
     orch = Orchestrator(retriever=DummyRetriever(), llm_client=DummyLLM(), config=cfg)

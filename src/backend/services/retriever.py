@@ -57,20 +57,20 @@ class RetrievedChunk:
 
 class Retriever:
     """
-    Retrieval-only component:
-    - Connects to persistent Chroma
-    - Uses LlamaIndex to retrieve top chunks
-    - Supports thresholding to reduce irrelevant context (token burn)
-
-    Config keys:
-      - chroma_path, collection_name
-      - fetch_k: retrieve N candidates from vector store
-      - top_k: final max results returned (after filtering)
-      - score_type: "similarity" (higher better) or "distance" (lower better) or "auto"
-      - min_score: keep scores >= min_score (similarity mode)
-      - max_distance: keep scores <= max_distance (distance mode)
-      - min_results: if filtering removes everything, keep at least this many best results
-      - debug_retrieval: prints retrieval diagnostics
+    Composant de recherche vectorielle avec Chroma.
+    
+    Gère:
+    - Connexion à la base vectorielle Chroma persistante
+    - Récupération des chunks les plus pertinents via embeddings
+    - Filtrage par score de similarité/distance
+    - Safety net pour éviter les réponses vides
+    
+    Configuration:
+    - chroma_path: Chemin vers la DB Chroma
+    - collection_name: Nom de la collection
+    - top_k: Nombre de résultats finaux
+    - fetch_k: Nombre de candidats récupérés
+    - min_score/max_distance: Seuils de filtrage
     """
 
     def __init__(self, config: Optional[Dict[str, Any]] = None, api_key: Optional[str] = None):
@@ -126,6 +126,20 @@ class Retriever:
         return "similarity"
 
     def retrieve(self, payload: RetrievalPayload) -> List[RetrievedChunk]:
+        """
+        Recherche vectorielle dans les documents indexés.
+        
+        Args:
+            payload: Contient la query utilisateur et métadonnées
+            
+        Returns:
+            Liste de RetrievedChunk (texte + score + metadata)
+            
+        Notes:
+            - Utilise OpenAI embeddings (doit correspondre à l'ingestion)
+            - Applique le filtrage par score si configuré
+            - Garantit min_results chunks si disponibles (safety net)
+        """
         query = (payload.input or "").strip()
         if not query:
             return []

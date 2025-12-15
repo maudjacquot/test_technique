@@ -75,6 +75,30 @@ def load_single_file_as_documents(file_path: Path) -> List[Document]:
 
 
 def ingest_file(file_path: Path, cfg: Dict[str, Any], api_key: str) -> None:
+    """
+    Ingère un fichier dans la base vectorielle Chroma.
+    
+    Pipeline:
+    1. Chargement du document (SimpleDirectoryReader)
+    2. Chunking (SentenceSplitter avec overlap)
+    3. Enrichissement des métadonnées (source_file, doc_id, timestamp)
+    4. Génération des embeddings (OpenAI)
+    5. Insertion dans Chroma (collection persistante)
+    
+    Args:
+        file_path: Chemin absolu vers le fichier à ingérer
+        cfg: Configuration (chunk_size, chroma_path, etc.)
+        api_key: Clé API OpenAI pour les embeddings
+        
+    Raises:
+        RuntimeError: Si aucun document n'est chargé
+        FileNotFoundError: Si le fichier n'existe pas
+        
+    Notes:
+        - Génère un doc_id stable basé sur le contenu (SHA256)
+        - Ajoute un timestamp d'ingestion
+        - Crée la collection si elle n'existe pas
+    """
     logger.info(f"[INGEST] Début ingestion : {file_path}")
     # Configure chunking + embeddings
     Settings.node_parser = SentenceSplitter(
